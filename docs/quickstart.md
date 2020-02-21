@@ -206,7 +206,13 @@ First, create the installation manifests
 openshift-install create manifests
 ```
 
-Edit the `manifests/cluster-scheduler-02-config.yml` Kubernetes manifest file to prevent Pods from being scheduled on the control plane machines by setting `mastersSchedulable` to `false`. It should look something like this after you edit it.
+Edit the `manifests/cluster-scheduler-02-config.yml` Kubernetes manifest file to prevent Pods from being scheduled on the control plane machines by setting `mastersSchedulable` to `false`.
+
+```shell
+$ sed -i 's/mastersSchedulable: true/mastersSchedulable: false/g' manifests/cluster-scheduler-02-config.yml
+```
+
+It should look something like this after you edit it.
 
 ```shell
 $ cat manifests/cluster-scheduler-02-config.yml
@@ -233,13 +239,13 @@ Finally, copy the ignition files in the `ignition` directory for the websever
 ```
 cp ~/ocp4/*.ign /var/www/html/ignition/
 restorecon -vR /var/www/html/
+chmod o+r /var/www/html/ignition/*.ign
 ```
 
 ## Install VMs
 
-Launch `virt-manager`, and boot the VMs into the boot menu; and select PXE. You'll be presented with the following picture.
+Launch `virt-manager`, and boot the VMs into the boot menu; and select PXE. The vms should boot into the proper PXE profile, based on their IP address.
 
-![pxe](images/pxe.png)
 
 Boot/install the VMs in the following order
 
@@ -277,6 +283,7 @@ INFO It is now safe to remove the bootstrap resources
 
 ...you can continue....at this point you can delete the bootstrap server.
 
+
 ## Finish Install
 
 First, login to your cluster
@@ -285,7 +292,15 @@ First, login to your cluster
 export KUBECONFIG=/root/ocp4/auth/kubeconfig
 ```
 
-Set up storage for you registry (to use PVs follow [this](https://docs.openshift.com/container-platform/4.2/installing/installing_bare_metal/installing-bare-metal.html#registry-configuring-storage-baremetal_installing-bare-metal))
+Set the registry for your cluster
+
+First, you have to set the `managementState` to `Managed` for your cluster
+
+```
+oc patch configs.imageregistry.operator.openshift.io cluster --type merge --patch '{"spec":{"managementState":"Managed"}}'
+```
+
+For PoCs, using `emptyDir` is oka (to use PVs follow [this](https://docs.openshift.com/container-platform/latest/installing/installing_bare_metal/installing-bare-metal.html#registry-configuring-storage-baremetal_installing-bare-metal) doc)
 
 ```
 oc patch configs.imageregistry.operator.openshift.io cluster --type merge --patch '{"spec":{"storage":{"emptyDir":{}}}}'
@@ -325,7 +340,7 @@ openshift-install wait-for install-complete
 
 ## Upgrade
 
-If you didn't install the latest 4.2.Z release...then just run the following
+If you didn't install the latest 4.3.Z release...then just run the following
 
 ```
 oc adm upgrade --to-latest=true

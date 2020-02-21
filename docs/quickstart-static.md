@@ -162,7 +162,13 @@ First, create the installation manifests
 openshift-install create manifests
 ```
 
-Edit the `manifests/cluster-scheduler-02-config.yml` Kubernetes manifest file to prevent Pods from being scheduled on the control plane machines by setting `mastersSchedulable` to `false`. It should look something like this after you edit it.
+Edit the `manifests/cluster-scheduler-02-config.yml` Kubernetes manifest file to prevent Pods from being scheduled on the control plane machines by setting `mastersSchedulable` to `false`.
+
+```shell
+$ sed -i 's/mastersSchedulable: true/mastersSchedulable: false/g' manifests/cluster-scheduler-02-config.yml
+```
+
+It should look something like this after you edit it.
 
 ```shell
 $ cat manifests/cluster-scheduler-02-config.yml
@@ -189,6 +195,7 @@ Finally, copy the ignition files in the `ignition` directory for the websever
 ```
 cp ~/ocp4/*.ign /var/www/html/ignition/
 restorecon -vR /var/www/html/
+chmod o+r /var/www/html/ignition/*.ign
 ```
 
 ## Install VMs
@@ -268,7 +275,15 @@ First, login to your cluster
 export KUBECONFIG=/root/ocp4/auth/kubeconfig
 ```
 
-Set up storage for you registry (to use PVs follow [this](https://docs.openshift.com/container-platform/4.2/installing/installing_bare_metal/installing-bare-metal.html#registry-configuring-storage-baremetal_installing-bare-metal))
+Set the registry for your cluster
+
+First, you have to set the `managementState` to `Managed` for your cluster
+
+```
+oc patch configs.imageregistry.operator.openshift.io cluster --type merge --patch '{"spec":{"managementState":"Managed"}}'
+```
+
+For PoCs, using `emptyDir` is okay (to use PVs follow [this](https://docs.openshift.com/container-platform/latest/installing/installing_bare_metal/installing-bare-metal.html#registry-configuring-storage-baremetal_installing-bare-metal) doc)
 
 ```
 oc patch configs.imageregistry.operator.openshift.io cluster --type merge --patch '{"spec":{"storage":{"emptyDir":{}}}}'
@@ -308,7 +323,7 @@ openshift-install wait-for install-complete
 
 ## Upgrade
 
-If you didn't install the latest 4.2.Z release...then just run the following
+If you didn't install the latest 4.3.Z release...then just run the following
 
 ```
 oc adm upgrade --to-latest=true
